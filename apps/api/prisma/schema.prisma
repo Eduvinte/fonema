@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PREMIUM
+}
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  name               String?
+  plan               Plan      @default(FREE)
+  flowCustomerId     String?   @unique
+  flowSubscriptionId String?
+  aiWordsUsed        Int       @default(0)
+  aiPeriodStart      DateTime  @default(now())
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sections      Section[]
+  payments      Payment[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Section {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  words     Word[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("sections")
+}
+
+model Word {
+  id          String   @id @default(cuid())
+  sectionId   String
+  section     Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  text        String
+  translation String?
+  example     String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([sectionId])
+  @@map("words")
+}
+
+model AudioCache {
+  id        String   @id @default(cuid())
+  textHash  String   @unique
+  voice     String
+  bytes     Bytes
+  createdAt DateTime @default(now())
+
+  @@map("audio_cache")
+}
+
+model Payment {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flowOrder     Int       @unique
+  commerceOrder String    @unique
+  amount        Float
+  status        Int
+  subject       String?
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@map("payments")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
