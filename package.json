@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "App de pronunciación en inglés con IA",
+  "packageManager": "pnpm@9.15.9",
   "workspaces": [
     "apps/*"
   ],
