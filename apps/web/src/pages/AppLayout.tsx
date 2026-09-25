@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Crown, FolderOpen, LogOut, MessageSquareText, Sparkles, X } from 'lucide-react';
+import { Crown, FolderOpen, LogOut, MessageSquareText, Shield, Sparkles, X } from 'lucide-react';
 import { useAuthStore } from '../features/auth/auth.store';
 import { chatApi } from '../features/chat/chat.api';
 import { ChatConversation } from '../features/chat/ChatConversation';
@@ -52,6 +52,11 @@ export function AppLayout() {
               <NavItem to="/app/billing">
                 <Crown className="size-4" /> Plan
               </NavItem>
+              {user?.role === 'ADMIN' && (
+                <NavItem to="/app/admin">
+                  <Shield className="size-4" /> Admin
+                </NavItem>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-3">
@@ -93,6 +98,11 @@ export function AppLayout() {
           <NavItem to="/app/billing">
             <Crown className="size-4" /> Plan
           </NavItem>
+          {user?.role === 'ADMIN' && (
+            <NavItem to="/app/admin">
+              <Shield className="size-4" /> Admin
+            </NavItem>
+          )}
         </nav>
       </header>
 

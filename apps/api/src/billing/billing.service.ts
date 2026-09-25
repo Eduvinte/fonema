@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Plan } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { FlowService } from './flow.service';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class BillingService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly flow: FlowService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   async getState(userId: string) {
@@ -107,6 +109,7 @@ export class BillingService {
       data: { flowSubscriptionId: subscriptionId },
     });
 
+    this.analytics.track('SUBSCRIPTION_CREATED', userId, { subscriptionId });
     return { subscriptionId };
   }
 
@@ -238,6 +241,10 @@ export class BillingService {
 
     const flowOrder = Number(status.flowOrder);
 
+    const existing = await this.prisma.payment.findUnique({
+      where: { flowOrder },
+    });
+
     await this.prisma.$transaction([
       this.prisma.payment.upsert({
         where: { flowOrder },
@@ -257,5 +264,11 @@ export class BillingService {
         data: { plan: Plan.PREMIUM },
       }),
     ]);
+
+    this.analytics.track('PAYMENT_RECEIVED', userId, {
+      flowOrder,
+      amount: Number(status.amount),
+      firstTime: !existing,
+    });
   }
 }

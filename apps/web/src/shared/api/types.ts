@@ -1,10 +1,12 @@
 export type Plan = 'FREE' | 'PREMIUM';
+export type UserRole = 'USER' | 'ADMIN';
 
 export interface User {
   id: string;
   email: string;
   name: string | null;
   plan: Plan;
+  role: UserRole;
   aiWordsUsed: number;
   aiPeriodStart: string;
 }

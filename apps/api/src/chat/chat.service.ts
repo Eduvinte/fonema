@@ -9,6 +9,7 @@ import { Plan, Prisma } from '@prisma/client';
 import OpenAI from 'openai';
 import { PrismaService } from '../prisma/prisma.service';
 import { SectionsService } from '../sections/sections.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ChatActionDto, ChatActionPayload, ChatWord } from './chat.types';
 
 const MAX_WORDS = 50;
@@ -101,6 +102,7 @@ export class ChatService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly sections: SectionsService,
+    private readonly analytics: AnalyticsService,
   ) {
     this.client = new OpenAI({
       apiKey: this.config.getOrThrow<string>('OPENAI_API_KEY'),
@@ -234,6 +236,12 @@ export class ChatService {
       data: { status: 'executed', executedSectionId: sectionId },
     });
 
+    this.analytics.track('CHAT_ACTION_EXECUTED', userId, {
+      actionType: action.type,
+      sectionId,
+      wordCount,
+    });
+
     return { sectionId, name, wordCount };
   }
 
@@ -263,6 +271,7 @@ export class ChatService {
     await this.prisma.chatMessage.create({
       data: { userId, conversationId, role: 'user', content: text },
     });
+    this.analytics.track('CHAT_MESSAGE', userId, { conversationId });
     await this.prisma.chatConversation.update({
       where: { id: conversation.id },
       data: { updatedAt: new Date() },

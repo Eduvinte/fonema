@@ -12,12 +12,18 @@ enum Plan {
   PREMIUM
 }
 
+enum UserRole {
+  USER
+  ADMIN
+}
+
 model User {
   id                 String    @id @default(cuid())
   email              String    @unique
   passwordHash       String
   name               String?
   plan               Plan      @default(FREE)
+  role               UserRole  @default(USER)
   flowCustomerId     String?   @unique
   flowSubscriptionId String?
   aiWordsUsed        Int       @default(0)
@@ -30,8 +36,23 @@ model User {
   refreshTokens RefreshToken[]
   chatMessages  ChatMessage[]
   conversations ChatConversation[]
+  events        AnalyticsEvent[]
 
   @@map("users")
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@map("analytics_events")
 }
 
 model ChatConversation {

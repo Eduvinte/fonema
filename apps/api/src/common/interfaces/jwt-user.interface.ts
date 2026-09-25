@@ -5,6 +5,7 @@ export interface JwtUser {
   email: string;
   name: string | null;
   plan: Plan;
+  role: 'USER' | 'ADMIN';
   aiWordsUsed: number;
   aiPeriodStart: Date;
 }

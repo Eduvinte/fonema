@@ -9,6 +9,7 @@ import OpenAI from 'openai';
 import * as crypto from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { WordsService } from '../words/words.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 export type AudioMode = 'word' | 'example';
 
@@ -20,6 +21,7 @@ export class AudioService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly words: WordsService,
+    private readonly analytics: AnalyticsService,
   ) {
     this.client = new OpenAI({
       apiKey: this.config.getOrThrow<string>('OPENAI_API_KEY'),
@@ -58,6 +60,7 @@ export class AudioService {
     if (cached) {
       const age = Date.now() - cached.createdAt.getTime();
       if (age < ttlMs) {
+        this.analytics.track('AUDIO_PLAY', userId, { mode, cached: true });
         return { bytes: Buffer.from(cached.bytes), contentType: 'audio/mpeg' };
       }
       await this.prisma.audioCache
@@ -86,6 +89,7 @@ export class AudioService {
       create: { textHash, voice, bytes },
     });
 
+    this.analytics.track('AUDIO_PLAY', userId, { mode, cached: false });
     return { bytes, contentType: 'audio/mpeg' };
   }
 

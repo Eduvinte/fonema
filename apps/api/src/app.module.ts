@@ -9,11 +9,14 @@ import { AiModule } from './ai/ai.module';
 import { AudioModule } from './audio/audio.module';
 import { BillingModule } from './billing/billing.module';
 import { ChatModule } from './chat/chat.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
     AppConfigModule,
     PrismaModule,
+    AnalyticsModule,
     AuthModule,
     SectionsModule,
     WordsModule,
@@ -21,6 +24,7 @@ import { ChatModule } from './chat/chat.module';
     AudioModule,
     BillingModule,
     ChatModule,
+    AdminModule,
   ],
   controllers: [HealthController],
 })

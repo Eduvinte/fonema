@@ -4,6 +4,7 @@ import { Plan } from '@prisma/client';
 import OpenAI from 'openai';
 import { PrismaService } from '../prisma/prisma.service';
 import { SectionsService } from '../sections/sections.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { PaymentRequiredException } from '../common/exceptions/payment-required.exception';
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
@@ -23,6 +24,7 @@ export class AiService {
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
     private readonly sections: SectionsService,
+    private readonly analytics: AnalyticsService,
   ) {
     this.client = new OpenAI({
       apiKey: this.config.getOrThrow<string>('OPENAI_API_KEY'),
@@ -102,6 +104,13 @@ export class AiService {
         enrichedTotal,
         pending.length,
       );
+    }
+
+    if (enrichedTotal > 0) {
+      this.analytics.track('WORDS_GENERATED', userId, {
+        sectionId,
+        count: enrichedTotal,
+      });
     }
 
     return { enriched: enrichedTotal };

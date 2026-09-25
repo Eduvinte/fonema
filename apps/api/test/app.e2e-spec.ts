@@ -163,4 +163,23 @@ describe('API (e2e)', () => {
         expect(body<Array<{ id: string }>>(res)[0].id).toBe(conversationId),
       );
   });
+
+  it('el panel admin rechaza a usuarios sin rol ADMIN', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'e2e@test.com', password: 'password123' })
+      .expect(200);
+
+    const token = body<RegisterResponse>(login).accessToken;
+
+    await request(app.getHttpServer())
+      .get('/api/admin/stats')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/api/admin/activity')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(403);
+  });
 });

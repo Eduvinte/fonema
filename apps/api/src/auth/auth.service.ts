@@ -6,6 +6,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { TokenPayload } from '../common/interfaces/jwt-user.interface';
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -34,6 +36,7 @@ export class AuthService {
       data: { email, passwordHash, name: dto.name?.trim() || null },
     });
 
+    this.analytics.track('REGISTER', user.id);
     const tokens = await this.issueTokens(user.id, email);
     return { user: this.toSafeUser(user), ...tokens };
   }
@@ -50,6 +53,7 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 
+    this.analytics.track('LOGIN', user.id);
     const tokens = await this.issueTokens(user.id, user.email);
     return { user: this.toSafeUser(user), ...tokens };
   }
@@ -146,6 +150,7 @@ export class AuthService {
     email: string;
     name: string | null;
     plan: string;
+    role: string;
     aiWordsUsed: number;
     aiPeriodStart: Date;
   }) {
@@ -154,6 +159,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       plan: user.plan,
+      role: user.role,
       aiWordsUsed: user.aiWordsUsed,
       aiPeriodStart: user.aiPeriodStart,
     };

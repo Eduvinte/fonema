@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { UpdateSectionDto } from './dto/update-section.dto';
 
 @Injectable()
 export class SectionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly analytics: AnalyticsService,
+  ) {}
 
   async list(userId: string) {
     const sections = await this.prisma.section.findMany({
@@ -34,6 +38,14 @@ export class SectionsService {
       },
       include: { words: { orderBy: { sortOrder: 'asc' } } },
     });
+    this.analytics.track('SECTION_CREATED', userId, {
+      sectionId: section.id,
+      name: section.name,
+      wordCount: words.length,
+    });
+    if (words.length > 0) {
+      this.analytics.track('WORDS_ADDED', userId, { count: words.length });
+    }
     return section;
   }
 
@@ -59,6 +71,7 @@ export class SectionsService {
   async remove(userId: string, sectionId: string) {
     await this.getOwnedSection(userId, sectionId);
     await this.prisma.section.delete({ where: { id: sectionId } });
+    this.analytics.track('SECTION_DELETED', userId, { sectionId });
     return { ok: true };
   }
 
@@ -89,6 +102,13 @@ export class SectionsService {
       })),
     });
 
+    if (toAdd.length > 0) {
+      this.analytics.track('WORDS_ADDED', userId, {
+        sectionId,
+        count: toAdd.length,
+      });
+    }
+
     return { added: toAdd.length, skipped: words.length - toAdd.length };
   }
 
@@ -113,6 +133,15 @@ export class SectionsService {
       },
       include: { words: { orderBy: { sortOrder: 'asc' } } },
     });
+    this.analytics.track('SECTION_CREATED', userId, {
+      sectionId: section.id,
+      name: section.name,
+      wordCount: cleaned.length,
+      via: 'chat',
+    });
+    if (cleaned.length > 0) {
+      this.analytics.track('WORDS_ADDED', userId, { count: cleaned.length });
+    }
     return section;
   }
 
@@ -146,6 +175,14 @@ export class SectionsService {
         sortOrder: startOrder + i,
       })),
     });
+
+    if (toAdd.length > 0) {
+      this.analytics.track('WORDS_ADDED', userId, {
+        sectionId,
+        count: toAdd.length,
+        via: 'chat',
+      });
+    }
 
     return { added: toAdd.length, skipped: cleaned.length - toAdd.length };
   }
