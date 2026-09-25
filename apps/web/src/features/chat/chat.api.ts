@@ -20,6 +20,15 @@ export interface ChatMessageDto {
   createdAt: string;
 }
 
+export interface ChatConversationDto {
+  id: string;
+  title: string;
+  messageCount: number;
+  lastMessage: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+
 export type ChatStreamEvent =
   | { event: 'delta'; text: string }
   | { event: 'action'; action: ChatActionDto }
@@ -27,7 +36,13 @@ export type ChatStreamEvent =
   | { event: 'error'; status: number; message: string };
 
 export const chatApi = {
-  history: () => api<ChatMessageDto[]>('/chat/messages'),
+  conversations: () => api<ChatConversationDto[]>('/chat/conversations'),
+  createConversation: () =>
+    api<ChatConversationDto>('/chat/conversations', { method: 'POST', body: JSON.stringify({}) }),
+  deleteConversation: (conversationId: string) =>
+    api<{ ok: boolean }>(`/chat/conversations/${conversationId}`, { method: 'DELETE' }),
+  messages: (conversationId: string) =>
+    api<ChatMessageDto[]>(`/chat/conversations/${conversationId}/messages`),
   execute: (messageId: string) =>
     api<{ sectionId: string; name: string; wordCount: number }>(
       `/chat/messages/${messageId}/execute`,
@@ -35,17 +50,17 @@ export const chatApi = {
     ),
   dismiss: (messageId: string) =>
     api<{ ok: boolean }>(`/chat/messages/${messageId}/dismiss`, { method: 'POST' }),
-  clear: () => api<{ ok: boolean }>('/chat/messages', { method: 'DELETE' }),
 };
 
 export async function streamChatMessage(
+  conversationId: string,
   message: string,
   onEvent: (event: ChatStreamEvent) => void,
 ): Promise<void> {
   const { accessToken } = useAuthStore.getState();
   const base = (import.meta.env.VITE_API_URL ?? '') + '/api';
 
-  const response = await fetch(`${base}/chat/stream`, {
+  const response = await fetch(`${base}/chat/conversations/${conversationId}/stream`, {
     method: 'POST',
     credentials: 'include',
     headers: {

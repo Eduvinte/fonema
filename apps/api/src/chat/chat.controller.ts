@@ -11,7 +11,7 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
 
@@ -22,24 +22,45 @@ class ChatStreamDto {
   message: string;
 }
 
+class CreateConversationDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  title?: string;
+}
+
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chat: ChatService) {}
 
-  @Get('messages')
-  history(@CurrentUser('id') userId: string) {
-    return this.chat.getHistory(userId);
+  @Get('conversations')
+  list(@CurrentUser('id') userId: string) {
+    return this.chat.listConversations(userId);
   }
 
-  @Delete('messages')
+  @Post('conversations')
+  create(
+    @CurrentUser('id') userId: string,
+    @Body() dto: CreateConversationDto,
+  ) {
+    return this.chat.createConversation(userId, dto.title);
+  }
+
+  @Delete('conversations/:id')
   @HttpCode(HttpStatus.OK)
-  clear(@CurrentUser('id') userId: string) {
-    return this.chat.clearHistory(userId);
+  remove(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.chat.deleteConversation(userId, id);
   }
 
-  @Post('stream')
+  @Get('conversations/:id/messages')
+  messages(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    return this.chat.getMessages(userId, id);
+  }
+
+  @Post('conversations/:id/stream')
   async stream(
     @CurrentUser('id') userId: string,
+    @Param('id') id: string,
     @Body() dto: ChatStreamDto,
     @Req() req: Request,
     @Res() res: Response,
@@ -60,7 +81,7 @@ export class ChatController {
     req.on('close', () => res.end());
 
     try {
-      const result = await this.chat.streamMessage(userId, dto.message, {
+      const result = await this.chat.streamMessage(userId, id, dto.message, {
         onDelta: (text) => send('delta', { text }),
         onAction: (action) => send('action', { action }),
       });

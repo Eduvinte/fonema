@@ -107,18 +107,74 @@ export class ChatService {
     });
   }
 
-  async getHistory(userId: string) {
-    const messages = await this.prisma.chatMessage.findMany({
+  async assertPremium(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+    if (user.plan !== Plan.PREMIUM) {
+      throw new ForbiddenException(
+        'El asistente IA es exclusivo del plan Premium. Mejora tu plan para usar el chat.',
+      );
+    }
+    return user;
+  }
+
+  async listConversations(userId: string) {
+    const conversations = await this.prisma.chatConversation.findMany({
       where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        _count: { select: { messages: true } },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { content: true, role: true },
+        },
+      },
+    });
+    return conversations.map((c) => ({
+      id: c.id,
+      title: c.title,
+      messageCount: c._count.messages,
+      lastMessage: c.messages[0]?.content.slice(0, 80) ?? null,
+      updatedAt: c.updatedAt,
+      createdAt: c.createdAt,
+    }));
+  }
+
+  async createConversation(userId: string, title?: string) {
+    const conversation = await this.prisma.chatConversation.create({
+      data: {
+        userId,
+        title: title?.trim() ? title.trim().slice(0, 80) : 'Nueva conversación',
+      },
+    });
+    return {
+      id: conversation.id,
+      title: conversation.title,
+      messageCount: 0,
+      lastMessage: null,
+      updatedAt: conversation.updatedAt,
+      createdAt: conversation.createdAt,
+    };
+  }
+
+  async deleteConversation(userId: string, conversationId: string) {
+    const deleted = await this.prisma.chatConversation.deleteMany({
+      where: { id: conversationId, userId },
+    });
+    if (deleted.count === 0)
+      throw new NotFoundException('Conversación no encontrada');
+    return { ok: true };
+  }
+
+  async getMessages(userId: string, conversationId: string) {
+    await this.getOwnedConversation(userId, conversationId);
+    const messages = await this.prisma.chatMessage.findMany({
+      where: { conversationId },
       orderBy: { createdAt: 'asc' },
       take: 100,
     });
     return messages.map((m) => this.toDto(m));
-  }
-
-  async clearHistory(userId: string) {
-    await this.prisma.chatMessage.deleteMany({ where: { userId } });
-    return { ok: true };
   }
 
   async dismiss(userId: string, messageId: string) {
@@ -181,26 +237,39 @@ export class ChatService {
     return { sectionId, name, wordCount };
   }
 
-  async assertPremium(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('Usuario no encontrado');
-    if (user.plan !== Plan.PREMIUM) {
-      throw new ForbiddenException(
-        'El asistente IA es exclusivo del plan Premium. Mejora tu plan para usar el chat.',
-      );
-    }
-    return user;
-  }
-
-  async streamMessage(userId: string, text: string, events: StreamEvents) {
+  async streamMessage(
+    userId: string,
+    conversationId: string,
+    text: string,
+    events: StreamEvents,
+  ) {
     await this.assertPremium(userId);
 
+    const conversation = await this.getOwnedConversation(
+      userId,
+      conversationId,
+    );
+
+    const messageCount = await this.prisma.chatMessage.count({
+      where: { conversationId },
+    });
+    if (messageCount === 0) {
+      await this.prisma.chatConversation.update({
+        where: { id: conversation.id },
+        data: { title: text.trim().slice(0, 80) },
+      });
+    }
+
     await this.prisma.chatMessage.create({
-      data: { userId, role: 'user', content: text },
+      data: { userId, conversationId, role: 'user', content: text },
+    });
+    await this.prisma.chatConversation.update({
+      where: { id: conversation.id },
+      data: { updatedAt: new Date() },
     });
 
     const history = await this.prisma.chatMessage.findMany({
-      where: { userId },
+      where: { conversationId },
       orderBy: { createdAt: 'desc' },
       take: HISTORY_LIMIT,
     });
@@ -261,7 +330,12 @@ export class ChatService {
     const action = this.buildAction(toolCalls);
     if (!action) {
       const msg = await this.prisma.chatMessage.create({
-        data: { userId, role: 'assistant', content: content || 'Entendido 👍' },
+        data: {
+          userId,
+          conversationId,
+          role: 'assistant',
+          content: content || 'Entendido 👍',
+        },
       });
       return { messageId: msg.id, content: msg.content, action: null };
     }
@@ -270,6 +344,7 @@ export class ChatService {
     const msg = await this.prisma.chatMessage.create({
       data: {
         userId,
+        conversationId,
         role: 'assistant',
         content,
         action: action as unknown as Prisma.InputJsonValue,
@@ -278,6 +353,15 @@ export class ChatService {
     });
     events.onAction(dto);
     return { messageId: msg.id, content, action: dto };
+  }
+
+  private async getOwnedConversation(userId: string, conversationId: string) {
+    const conversation = await this.prisma.chatConversation.findFirst({
+      where: { id: conversationId, userId },
+    });
+    if (!conversation)
+      throw new NotFoundException('Conversación no encontrada');
+    return conversation;
   }
 
   private buildSystemPrompt(sections: Array<{ id: string; name: string }>) {

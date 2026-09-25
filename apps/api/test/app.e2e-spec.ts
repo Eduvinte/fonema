@@ -136,15 +136,31 @@ describe('API (e2e)', () => {
 
     const token = body<RegisterResponse>(login).accessToken;
 
+    const created = await request(app.getHttpServer())
+      .post('/api/chat/conversations')
+      .set('Authorization', `Bearer ${token}`)
+      .send({})
+      .expect(201);
+
+    const conversationId = body<{ id: string }>(created).id;
+
     await request(app.getHttpServer())
-      .post('/api/chat/stream')
+      .post(`/api/chat/conversations/${conversationId}/stream`)
       .set('Authorization', `Bearer ${token}`)
       .send({ message: 'Crea una lista de comida' })
       .expect(403);
 
     await request(app.getHttpServer())
-      .get('/api/chat/messages')
+      .get(`/api/chat/conversations/${conversationId}/messages`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
+
+    await request(app.getHttpServer())
+      .get('/api/chat/conversations')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200)
+      .expect((res) =>
+        expect(body<Array<{ id: string }>>(res)[0].id).toBe(conversationId),
+      );
   });
 });

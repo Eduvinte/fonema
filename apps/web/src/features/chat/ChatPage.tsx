@@ -1,393 +1,243 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowRight,
-  Check,
+  ArrowLeft,
   Crown,
-  FolderPlus,
-  ListPlus,
-  Send,
+  MessageSquareText,
+  Plus,
   Sparkles,
   Trash2,
-  X,
 } from 'lucide-react';
-import { chatApi, streamChatMessage } from './chat.api';
-import type { ChatActionDto, ChatMessageDto } from './chat.api';
+import { chatApi } from './chat.api';
+import type { ChatConversationDto } from './chat.api';
+import { ChatConversation } from './ChatConversation';
 import { useAuthStore } from '../auth/auth.store';
 import { Card } from '../../shared/components/Card';
 import { Button } from '../../shared/components/Button';
-import { Badge } from '../../shared/components/Badge';
 import { LoadingBlock } from '../../shared/components/Spinner';
 import { cn } from '../../shared/lib/utils';
 
-const SUGGESTIONS = [
-  'Crea una lista de 15 palabras sobre comida',
-  'Palabras útiles para viajar en avión',
-  'Añade palabras de negocios a una sección',
-  '¿Cómo se pronuncia "thorough"?',
-];
+function formatRelative(date: string): string {
+  const diff = Date.now() - new Date(date).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'ahora';
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days} d`;
+}
 
 export function ChatPage() {
   const user = useAuthStore((s) => s.user);
   const isPremium = user?.plan === 'PREMIUM';
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedId = searchParams.get('c');
 
-  const { data: history, isLoading } = useQuery({
-    queryKey: ['chat'],
-    queryFn: chatApi.history,
+  const { data: conversations, isLoading } = useQuery({
+    queryKey: ['chat-conversations'],
+    queryFn: chatApi.conversations,
     enabled: isPremium,
   });
 
-  const [input, setInput] = useState('');
-  const [streaming, setStreaming] = useState<{
-    text: string;
-    action: ChatActionDto | null;
-  } | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [history, streaming]);
-
-  const clearMutation = useMutation({
-    mutationFn: chatApi.clear,
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['chat'] }),
-  });
-
-  const handleClear = () => {
-    if (confirm('¿Borrar todo el historial del chat?')) clearMutation.mutate();
-  };
-
-  const send = async () => {
-    const text = input.trim();
-    if (!text || streaming) return;
-    setInput('');
-    setError(null);
-    setStreaming({ text: '', action: null });
-    try {
-      await streamChatMessage(text, (event) => {
-        if (event.event === 'delta') {
-          setStreaming((prev) => ({
-            text: (prev?.text ?? '') + event.text,
-            action: prev?.action ?? null,
-          }));
-        } else if (event.event === 'action') {
-          setStreaming((prev) => ({ text: prev?.text ?? '', action: event.action }));
-        } else if (event.event === 'done') {
-          void queryClient.invalidateQueries({ queryKey: ['chat'] });
-          void queryClient.invalidateQueries({ queryKey: ['sections'] });
-        } else if (event.event === 'error') {
-          setError(event.message);
-        }
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error inesperado');
-    } finally {
-      setStreaming(null);
+    if (!selectedId && conversations && conversations.length > 0) {
+      setSearchParams({ c: conversations[0].id }, { replace: true });
     }
-  };
+  }, [conversations, selectedId, setSearchParams]);
 
-  if (!isPremium) {
-    return (
-      <div className="mx-auto max-w-2xl pt-10">
-        <Card className="flex flex-col items-center gap-4 border-violet-200 bg-gradient-to-b from-violet-50/70 to-white p-10 text-center">
-          <div className="rounded-2xl bg-violet-100 p-3 text-violet-700">
-            <Sparkles className="size-6" />
-          </div>
-          <h1 className="text-xl font-bold text-stone-900">
-            Asistente IA — exclusivo Premium
-          </h1>
-          <p className="max-w-md text-sm text-stone-500">
-            Conversa con la IA para crear secciones y listas de vocabulario,
-            añadir palabras y resolver dudas de pronunciación, todo sin salir
-            de la app.
-          </p>
-          <Link to="/app/billing">
-            <Button variant="premium" size="lg">
-              <Crown className="size-4" /> Mejorar a Premium
-            </Button>
-          </Link>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mx-auto flex h-[calc(100dvh-8rem)] max-w-2xl flex-col">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold tracking-tight text-stone-900">
-            Asistente IA
-          </h1>
-          <Badge tone="violet">
-            <Sparkles className="size-3" /> Premium
-          </Badge>
-        </div>
-        {history && history.length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClear}
-            loading={clearMutation.isPending}
-          >
-            <Trash2 className="size-4" /> Limpiar chat
-          </Button>
-        )}
-      </div>
-
-      <div className="flex-1 space-y-4 overflow-y-auto pb-4 pr-1">
-        {isLoading && <LoadingBlock>Cargando conversación…</LoadingBlock>}
-
-        {!isLoading && history && history.length === 0 && !streaming && (
-          <div className="flex flex-col items-center gap-3 py-10">
-            <div className="rounded-2xl bg-violet-100 p-3 text-violet-700">
-              <Sparkles className="size-6" />
-            </div>
-            <p className="text-center text-sm text-stone-500">
-              Pídeme vocabulario y lo dejo listo para tu colección.
-              <br />
-              Prueba con una de estas ideas:
-            </p>
-            <div className="flex max-w-md flex-wrap justify-center gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setInput(s)}
-                  className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-600 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-800 cursor-pointer"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {history?.map((message) => (
-          <MessageBubble key={message.id} message={message} />
-        ))}
-
-        {streaming && (
-          <MessageBubble
-            streaming
-            message={{
-              id: 'streaming',
-              role: 'assistant',
-              content: streaming.text,
-              action: streaming.action,
-              status: streaming.action ? 'pending' : 'idle',
-              executedSectionId: null,
-              createdAt: new Date().toISOString(),
-            }}
-          />
-        )}
-
-        {error && (
-          <Card className="border-red-200 bg-red-50/60 p-3 text-sm text-red-700">
-            {error}
-          </Card>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void send();
-        }}
-        className="mt-2 flex items-end gap-2 border-t border-stone-200/70 pt-3"
-      >
-        <div className="relative flex-1">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Pide vocabulario o haz una pregunta…"
-            className="h-11 w-full rounded-xl border border-stone-300 bg-white pl-4 pr-4 text-sm text-stone-900 placeholder:text-stone-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
-            maxLength={2000}
-            disabled={Boolean(streaming)}
-          />
-        </div>
-        <Button
-          type="submit"
-          size="lg"
-          variant="premium"
-          className="h-11 w-11 px-0"
-          disabled={!input.trim() || Boolean(streaming)}
-          aria-label="Enviar mensaje"
-        >
-          {streaming ? (
-            <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-          ) : (
-            <Send className="size-4" />
-          )}
-        </Button>
-      </form>
-    </div>
-  );
-}
-
-function MessageBubble({
-  message,
-  streaming,
-}: {
-  message: ChatMessageDto;
-  streaming?: boolean;
-}) {
-  if (message.role === 'user') {
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-amber-600 px-4 py-2.5 text-sm text-white shadow-sm shadow-amber-600/20">
-          {message.content}
-        </div>
-      </div>
-    );
-  }
-
-  const isPending = message.action && message.status === 'pending';
-
-  return (
-    <div className="flex gap-2.5">
-      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
-        <Sparkles className="size-3.5" />
-      </span>
-      <div className="max-w-[85%] space-y-2">
-        {(message.content || streaming) && (
-          <Card
-            className={cn(
-              'rounded-2xl rounded-tl-md px-4 py-3 text-sm leading-relaxed text-stone-700',
-              streaming && 'border-violet-200',
-            )}
-          >
-            {message.content ? (
-              message.content
-            ) : (
-              <span className="inline-flex gap-1 text-stone-400">
-                <span className="size-1.5 animate-bounce rounded-full bg-violet-400" />
-                <span className="size-1.5 animate-bounce rounded-full bg-violet-400 [animation-delay:120ms]" />
-                <span className="size-1.5 animate-bounce rounded-full bg-violet-400 [animation-delay:240ms]" />
-              </span>
-            )}
-          </Card>
-        )}
-        {message.action && isPending && !streaming && (
-          <ActionCard message={message} />
-        )}
-        {message.action && message.status === 'executed' && (
-          <ExecutedCard message={message} />
-        )}
-        {message.action && message.status === 'dismissed' && (
-          <p className="text-xs text-stone-400">Propuesta descartada</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function ActionCard({ message }: { message: ChatMessageDto }) {
-  const queryClient = useQueryClient();
-  const action = message.action!;
-
-  const execute = useMutation({
-    mutationFn: () => chatApi.execute(message.id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['chat'] });
-      void queryClient.invalidateQueries({ queryKey: ['sections'] });
+  const createMutation = useMutation({
+    mutationFn: chatApi.createConversation,
+    onSuccess: (conversation) => {
+      void queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      setSearchParams({ c: conversation.id });
     },
   });
 
-  const dismiss = useMutation({
-    mutationFn: () => chatApi.dismiss(message.id),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['chat'] }),
+  const deleteMutation = useMutation({
+    mutationFn: chatApi.deleteConversation,
+    onSuccess: (_data, deletedId) => {
+      void queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+      if (selectedId === deletedId) {
+        setSearchParams({}, { replace: true });
+      }
+    },
   });
 
-  const title =
-    action.type === 'create_section'
-      ? `Crear sección “${action.name}”`
-      : `Añadir palabras a ${action.sectionName ?? 'tu sección'}`;
+  if (!isPremium) {
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col items-center justify-center gap-4 pt-10 text-center">
+        <div className="rounded-2xl bg-violet-100 p-3 text-violet-700">
+          <Sparkles className="size-6" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-stone-900">
+            Asistente IA — exclusivo Premium
+          </h1>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-stone-500">
+            Conversa con la IA para crear secciones y listas de vocabulario,
+            añadir palabras y resolver dudas de pronunciación, sin salir de la
+            app.
+          </p>
+        </div>
+        <Link to="/app/billing">
+          <Button variant="premium" size="lg">
+            <Crown className="size-4" /> Mejorar a Premium
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
-  const preview =
-    action.preview.join(', ') +
-    (action.wordCount > action.preview.length
-      ? ` +${action.wordCount - action.preview.length} más`
-      : '');
+  if (isLoading) return <LoadingBlock>Cargando conversaciones…</LoadingBlock>;
+
+  const list = conversations ?? [];
 
   return (
-    <Card className="border-violet-200 bg-violet-50/60 p-4">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
-          {action.type === 'create_section' ? (
-            <FolderPlus className="size-4" />
-          ) : (
-            <ListPlus className="size-4" />
-          )}
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-stone-900">{title}</p>
-          <p className="mt-0.5 text-xs text-stone-500">
-            {action.wordCount} {action.wordCount === 1 ? 'palabra' : 'palabras'} ·{' '}
-            {preview}
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Button
-              variant="premium"
-              size="sm"
-              onClick={() => execute.mutate()}
-              loading={execute.isPending}
-            >
-              <Check className="size-4" />
-              {action.type === 'create_section' ? 'Crear sección' : 'Añadir'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => dismiss.mutate()}
-              loading={dismiss.isPending}
-              disabled={execute.isPending}
-            >
-              <X className="size-4" /> Descartar
-            </Button>
-          </div>
-          {execute.isError && (
-            <p className="mt-2 text-xs text-red-600">
-              {execute.error instanceof Error
-                ? execute.error.message
-                : 'Error al ejecutar'}
-            </p>
-          )}
+    <div className="flex h-[calc(100dvh-8rem)] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+      <aside
+        className={cn(
+          'w-full shrink-0 flex-col border-r border-stone-200 bg-stone-100/70 p-3 md:flex md:w-64',
+          selectedId ? 'hidden' : 'flex',
+        )}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h1 className="text-lg font-bold tracking-tight text-stone-900">
+            Conversaciones
+          </h1>
+          <Button
+            size="sm"
+            variant="premium"
+            onClick={() => createMutation.mutate()}
+            loading={createMutation.isPending}
+          >
+            <Plus className="size-4" /> Nueva
+          </Button>
         </div>
+        <div className="flex-1 space-y-1.5 overflow-y-auto pr-1">
+          {list.length === 0 && (
+            <Card className="flex flex-col items-center gap-3 p-6 text-center">
+              <span className="rounded-xl bg-violet-100 p-2.5 text-violet-700">
+                <MessageSquareText className="size-5" />
+              </span>
+              <p className="text-sm text-stone-500">
+                Aún no tienes conversaciones. Crea una y pide tu primera lista
+                de vocabulario.
+              </p>
+              <Button
+                size="sm"
+                variant="premium"
+                onClick={() => createMutation.mutate()}
+              >
+                <Plus className="size-4" /> Nueva conversación
+              </Button>
+            </Card>
+          )}
+          {list.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+              active={conversation.id === selectedId}
+              onSelect={() => setSearchParams({ c: conversation.id })}
+              onDelete={() => deleteMutation.mutate(conversation.id)}
+            />
+          ))}
+        </div>
+      </aside>
+
+      <div
+        className={cn(
+          'min-w-0 flex-1 flex-col bg-white',
+          selectedId ? 'flex' : 'hidden md:flex',
+        )}
+      >
+        {selectedId ? (
+          <>
+            <button
+              onClick={() => setSearchParams({}, { replace: true })}
+              className="mb-2 inline-flex items-center gap-1.5 self-start px-1 pt-3 text-sm text-stone-500 hover:text-stone-800 md:hidden cursor-pointer"
+            >
+              <ArrowLeft className="size-4" /> Conversaciones
+            </button>
+            <div className="flex min-h-0 flex-1 flex-col px-5 pb-4">
+              <ChatConversation conversationId={selectedId} variant="page" />
+            </div>
+          </>
+        ) : (
+          <div className="hidden flex-1 flex-col items-center justify-center gap-3 text-center md:flex">
+            <span className="rounded-2xl bg-violet-100 p-3 text-violet-700">
+              <MessageSquareText className="size-6" />
+            </span>
+            <p className="text-sm text-stone-500">
+              Selecciona una conversación o crea una nueva
+            </p>
+          </div>
+        )}
       </div>
-    </Card>
+    </div>
   );
 }
 
-function ExecutedCard({ message }: { message: ChatMessageDto }) {
-  const action = message.action!;
-  const title =
-    action.type === 'create_section'
-      ? `Sección “${action.name}” creada`
-      : `Palabras añadidas a ${action.sectionName ?? 'la sección'}`;
-
+function ConversationItem({
+  conversation,
+  active,
+  onSelect,
+  onDelete,
+}: {
+  conversation: ChatConversationDto;
+  active: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
   return (
-    <Card className="flex flex-wrap items-center justify-between gap-3 border-emerald-200 bg-emerald-50/60 p-4">
-      <div className="flex items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-          <Check className="size-4" />
-        </span>
-        <div>
-          <p className="text-sm font-medium text-emerald-900">{title}</p>
-          <p className="text-xs text-emerald-700/80">
-            {action.wordCount} {action.wordCount === 1 ? 'palabra' : 'palabras'}
-          </p>
-        </div>
-      </div>
-      {message.executedSectionId && (
-        <Link to={`/app/s/${message.executedSectionId}`}>
-          <Button variant="secondary" size="sm">
-            Ver sección <ArrowRight className="size-4" />
-          </Button>
-        </Link>
+    <div
+      className={cn(
+        'group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 transition-colors',
+        active
+          ? 'border-violet-200 bg-violet-50/80'
+          : 'border-transparent bg-white hover:bg-stone-100',
       )}
-    </Card>
+      onClick={onSelect}
+    >
+      <span
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-lg',
+          active ? 'bg-violet-100 text-violet-700' : 'bg-stone-100 text-stone-500',
+        )}
+      >
+        <MessageSquareText className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            'truncate text-sm font-medium',
+            active ? 'text-violet-900' : 'text-stone-800',
+          )}
+        >
+          {conversation.title}
+        </p>
+        <p className="truncate text-xs text-stone-400">
+          {conversation.lastMessage ??
+            (conversation.messageCount === 0 ? 'Sin mensajes' : '…')}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-1">
+        <span className="text-[10px] text-stone-400">
+          {formatRelative(conversation.updatedAt)}
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm(`¿Eliminar «${conversation.title}»?`)) onDelete();
+          }}
+          className="rounded-md p-1 text-stone-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 cursor-pointer"
+          aria-label="Eliminar conversación"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </div>
+    </div>
   );
 }

@@ -29,22 +29,39 @@ model User {
   payments      Payment[]
   refreshTokens RefreshToken[]
   chatMessages  ChatMessage[]
+  conversations ChatConversation[]
 
   @@map("users")
 }
 
-model ChatMessage {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role               String
-  content            String
-  action             Json?
-  status             String   @default("idle")
-  executedSectionId  String?
-  createdAt          DateTime @default(now())
+model ChatConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("Nueva conversación")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([userId, createdAt])
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId   String
+  conversation     ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role             String
+  content          String
+  action           Json?
+  status           String   @default("idle")
+  executedSectionId String?
+  createdAt        DateTime @default(now())
+
+  @@index([conversationId, createdAt])
   @@map("chat_messages")
 }
 
