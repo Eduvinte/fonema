@@ -78,6 +78,14 @@ pnpm --filter api lint && pnpm --filter web lint
 
 ## Deploy
 
+### Producción actual
+
+| Recurso | URL |
+|---|---|
+| Frontend (Vercel) | https://pronunciation-mu.vercel.app |
+| API (Railway) | https://api-production-842b.up.railway.app |
+| Postgres | Plugin de Railway |
+
 ### Frontend → Vercel
 
 1. Importa el repo en Vercel, framework "Other".
@@ -87,7 +95,8 @@ pnpm --filter api lint && pnpm --filter web lint
 ### Backend → Railway
 
 1. Nuevo servicio "Deploy from repo".
-2. Root Directory: `apps/api` (usa el `railway.json` incluido).
+2. Railway detecta el `Dockerfile` de la raíz (multi-stage: Node 20, pnpm,
+   prisma generate + build, migraciones al arrancar).
 3. Añade el plugin **PostgreSQL** (inyecta `DATABASE_URL` automáticamente).
 4. Env: `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`,
    `CORS_ORIGIN=https://tu-app.vercel.app`, `FLOW_ENV`, `FLOW_API_KEY`,

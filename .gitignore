@@ -28,3 +28,5 @@ pgdata/
 
 # Coverage
 coverage/
+.vercel
+.env*
