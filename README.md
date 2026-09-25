@@ -4,7 +4,9 @@ Crea secciones de vocabulario, pega listas de palabras y deja que la IA genere l
 traducción y una frase de ejemplo. Escucha cada palabra y frase con un clic.
 
 - **Gratis**: voces del navegador + 50 palabras IA al mes
-- **Premium**: voces de OpenAI + IA ilimitada ($4.990 CLP/mes, pagos con Flow.cl)
+- **Premium**: voces de OpenAI + IA ilimitada + **Asistente IA** (chat que crea
+  secciones y listas de vocabulario dentro de la app) ($4.990 CLP/mes, pagos
+  con Flow.cl)
 
 ## Stack
 
@@ -25,6 +27,7 @@ apps/
 │   ├── words/          # CRUD de palabras
 │   ├── ai/             # Enrich por lotes con SSE + cuotas por plan
 │   ├── audio/          # TTS OpenAI con caché en BD
+│   ├── chat/           # Asistente IA: streaming + function-calling
 │   ├── billing/        # Flow.cl: checkout, suscripción, webhook
 │   └── prisma/         # schema + migraciones
 └── web/src/            # React
@@ -112,6 +115,15 @@ POST /api/auth/register|login|refresh|logout   GET /api/auth/me
 GET/POST /api/sections          GET/PATCH/DELETE /api/sections/:id
 POST /api/sections/:id/words    POST /api/sections/:id/enrich   (SSE)
 PATCH/DELETE /api/words/:id     GET /api/words/:id/audio?mode=word|example
-GET /api/billing                POST /api/billing/checkout|subscribe|cancel
+GET /api/billing                POST /api/billing/checkout|subscribe|cancel|sync
 POST /api/billing/webhook       GET /api/billing/register-status
+GET /api/chat/messages          POST /api/chat/stream   (SSE, Premium)
+POST /api/chat/messages/:id/execute|dismiss   DELETE /api/chat/messages
 ```
+
+### Asistente IA (Premium)
+
+Chat con streaming (gpt-4o-mini + function-calling) que propone acciones que el
+usuario confirma: crear secciones o añadir palabras a secciones existentes.
+Las propuestas quedan en `chat_messages` con estado `pending` hasta que el
+usuario las ejecuta o descarta; el historial se guarda en BD.

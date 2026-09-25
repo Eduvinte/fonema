@@ -6,6 +6,7 @@ import { SectionsPage } from '../features/sections/SectionsPage';
 import { NewSectionPage } from '../features/sections/NewSectionPage';
 import { SectionDetailPage } from '../features/sections/SectionDetailPage';
 import { BillingPage } from '../features/billing/BillingPage';
+import { ChatPage } from '../features/chat/ChatPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <LandingPage /> },
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
       { index: true, element: <SectionsPage /> },
       { path: 'nueva', element: <NewSectionPage /> },
       { path: 's/:id', element: <SectionDetailPage /> },
+      { path: 'chat', element: <ChatPage /> },
       { path: 'billing', element: <BillingPage /> },
     ],
   },

@@ -8,6 +8,7 @@ import { WordsModule } from './words/words.module';
 import { AiModule } from './ai/ai.module';
 import { AudioModule } from './audio/audio.module';
 import { BillingModule } from './billing/billing.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { BillingModule } from './billing/billing.module';
     AiModule,
     AudioModule,
     BillingModule,
+    ChatModule,
   ],
   controllers: [HealthController],
 })

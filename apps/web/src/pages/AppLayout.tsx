@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link, Navigate, NavLink, Outlet } from 'react-router-dom';
-import { Crown, FolderOpen, LogOut } from 'lucide-react';
+import { Crown, FolderOpen, LogOut, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../features/auth/auth.store';
 import { Logo } from '../shared/components/Logo';
 import { Button } from '../shared/components/Button';
@@ -35,6 +35,9 @@ export function AppLayout() {
             <nav className="hidden items-center gap-1 sm:flex">
               <NavItem to="/app" end>
                 <FolderOpen className="size-4" /> Secciones
+              </NavItem>
+              <NavItem to="/app/chat">
+                <Sparkles className="size-4" /> Asistente
               </NavItem>
               <NavItem to="/app/billing">
                 <Crown className="size-4" /> Plan
@@ -73,6 +76,9 @@ export function AppLayout() {
         <nav className="flex items-center gap-1 border-t border-stone-200/60 px-4 py-1.5 sm:hidden">
           <NavItem to="/app" end>
             <FolderOpen className="size-4" /> Secciones
+          </NavItem>
+          <NavItem to="/app/chat">
+            <Sparkles className="size-4" /> Asistente
           </NavItem>
           <NavItem to="/app/billing">
             <Crown className="size-4" /> Plan

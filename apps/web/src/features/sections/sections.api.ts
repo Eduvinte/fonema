@@ -1,4 +1,5 @@
 import { api } from '../../shared/api/client';
+import { parseSseStream } from '../../shared/api/sse';
 import type { SectionDetail, SectionSummary, Word } from '../../shared/api/types';
 import { useAuthStore } from '../auth/auth.store';
 
@@ -57,25 +58,7 @@ export async function enrichSectionStream(
 
   if (!response.body) return;
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    const blocks = buffer.split('\n\n');
-    buffer = blocks.pop() ?? '';
-
-    for (const block of blocks) {
-      const eventLine = block.split('\n').find((l) => l.startsWith('event:'));
-      const dataLine = block.split('\n').find((l) => l.startsWith('data:'));
-      if (!eventLine || !dataLine) continue;
-      const event = eventLine.slice(7).trim();
-      const data = JSON.parse(dataLine.slice(6).trim()) as Record<string, unknown>;
-      onEvent({ event, ...data } as EnrichEvent);
-    }
+  for await (const { event, data } of parseSseStream(response)) {
+    onEvent({ event, ...data } as EnrichEvent);
   }
 }

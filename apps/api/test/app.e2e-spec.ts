@@ -127,4 +127,24 @@ describe('API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
+
+  it('el chat IA es exclusivo del plan Premium', async () => {
+    const login = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email: 'e2e@test.com', password: 'password123' })
+      .expect(200);
+
+    const token = body<RegisterResponse>(login).accessToken;
+
+    await request(app.getHttpServer())
+      .post('/api/chat/stream')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'Crea una lista de comida' })
+      .expect(403);
+
+    await request(app.getHttpServer())
+      .get('/api/chat/messages')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+  });
 });

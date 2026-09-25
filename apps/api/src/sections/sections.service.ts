@@ -92,6 +92,64 @@ export class SectionsService {
     return { added: toAdd.length, skipped: words.length - toAdd.length };
   }
 
+  async createEnriched(
+    userId: string,
+    name: string,
+    words: Array<{ text: string; translation: string; example: string }>,
+  ) {
+    const cleaned = this.normalizeEnriched(words);
+    const section = await this.prisma.section.create({
+      data: {
+        name: name.trim(),
+        userId,
+        words: {
+          create: cleaned.map((w, i) => ({
+            text: w.text,
+            translation: w.translation,
+            example: w.example,
+            sortOrder: i,
+          })),
+        },
+      },
+      include: { words: { orderBy: { sortOrder: 'asc' } } },
+    });
+    return section;
+  }
+
+  async addWordsEnriched(
+    userId: string,
+    sectionId: string,
+    words: Array<{ text: string; translation: string; example: string }>,
+  ) {
+    const section = await this.getOwnedSection(userId, sectionId);
+
+    const cleaned = this.normalizeEnriched(words);
+    const existing = await this.prisma.word.findMany({
+      where: { sectionId: section.id },
+      select: { text: true },
+    });
+    const existingSet = new Set(existing.map((w) => w.text.toLowerCase()));
+    const toAdd = cleaned.filter((w) => !existingSet.has(w.text.toLowerCase()));
+
+    const maxOrder = await this.prisma.word.aggregate({
+      where: { sectionId: section.id },
+      _max: { sortOrder: true },
+    });
+    const startOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+
+    await this.prisma.word.createMany({
+      data: toAdd.map((w, i) => ({
+        sectionId: section.id,
+        text: w.text,
+        translation: w.translation,
+        example: w.example,
+        sortOrder: startOrder + i,
+      })),
+    });
+
+    return { added: toAdd.length, skipped: cleaned.length - toAdd.length };
+  }
+
   async getOwnedSection(userId: string, sectionId: string) {
     const section = await this.prisma.section.findFirst({
       where: { id: sectionId, userId },
@@ -113,6 +171,28 @@ export class SectionsService {
       if (seen.has(key)) continue;
       seen.add(key);
       result.push(clean);
+    }
+    return result;
+  }
+
+  private normalizeEnriched(
+    raw: Array<{ text: string; translation: string; example: string }>,
+  ): Array<{ text: string; translation: string; example: string }> {
+    const seen = new Set<string>();
+    const result: Array<{
+      text: string;
+      translation: string;
+      example: string;
+    }> = [];
+    for (const item of raw) {
+      const text = item.text.trim().replace(/\s+/g, ' ');
+      const translation = item.translation.trim();
+      const example = item.example.trim();
+      if (!text || !translation || !example) continue;
+      const key = text.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ text, translation, example });
     }
     return result;
   }
