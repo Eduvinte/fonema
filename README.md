@@ -119,7 +119,20 @@ GET /api/billing                POST /api/billing/checkout|subscribe|cancel|sync
 POST /api/billing/webhook       GET /api/billing/register-status
 GET /api/chat/messages          POST /api/chat/stream   (SSE, Premium)
 POST /api/chat/messages/:id/execute|dismiss   DELETE /api/chat/messages
+GET /api/admin/stats            GET /api/admin/users    GET /api/admin/activity
 ```
+
+### Panel de administración
+
+Ruta `/app/admin` (solo rol `ADMIN`): métricas (usuarios, activos, secciones,
+palabras IA, audios, chat, ingresos), series diarias de 30 días, eventos
+principales, tabla de usuarios con búsqueda y feed de actividad.
+
+- Los eventos se registran en `analytics_events` (register, login, secciones,
+  palabras, IA, audio, chat y pagos) desde los servicios de dominio.
+- Para nombrar un administrador: `UPDATE users SET role='ADMIN' WHERE email='...'`
+  (en local: `docker exec pronunciation-db psql -U pronunciation -d pronunciation`;
+  en Railway: `railway connect postgres`).
 
 ### Asistente IA (Premium)
 
