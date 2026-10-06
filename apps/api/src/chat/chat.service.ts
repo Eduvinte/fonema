@@ -250,6 +250,7 @@ export class ChatService {
     conversationId: string,
     text: string,
     events: StreamEvents,
+    document?: { name?: string; content: string },
   ) {
     await this.assertPremium(userId);
 
@@ -268,10 +269,17 @@ export class ChatService {
       });
     }
 
+    const storedContent = document
+      ? `${text.trim()}\n\n📄 ${document.name?.trim() || 'Documento'}\n\n${document.content}`
+      : text;
+
     await this.prisma.chatMessage.create({
-      data: { userId, conversationId, role: 'user', content: text },
+      data: { userId, conversationId, role: 'user', content: storedContent },
     });
-    this.analytics.track('CHAT_MESSAGE', userId, { conversationId });
+    this.analytics.track('CHAT_MESSAGE', userId, {
+      conversationId,
+      hasDocument: Boolean(document),
+    });
     await this.prisma.chatConversation.update({
       where: { id: conversation.id },
       data: { updatedAt: new Date() },
@@ -384,6 +392,7 @@ export class ChatService {
       'Reglas:',
       '- Palabras en inglés con traducción al español (acepción más común) y frase de ejemplo corta (máx 12 palabras).',
       `- Máximo ${MAX_WORDS} palabras por propuesta.`,
+      '- Si el usuario adjunta un documento (bloque que empieza con 📄), extrae el vocabulario MÁS IMPORTANTE del documento y propón UNA sección con create_section. Las frases de ejemplo deben ser citas del propio documento (o adaptaciones mínimas). El nombre de la sección refleja el tema del documento.',
       '- Acompaña la llamada a la función con un texto breve y amable (ej: "¡Listo! Te propongo esta lista").',
       '- Si el pedido no implica crear/añadir vocabulario, responde solo con texto (pronunciación, gramática, consejos, etc).',
       '- Responde en español, breve y amable.',

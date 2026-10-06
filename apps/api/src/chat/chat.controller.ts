@@ -11,15 +11,41 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { ChatService } from './chat.service';
+
+export const MAX_DOCUMENT_CHARS = 60000;
+
+class ChatDocumentDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name?: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(MAX_DOCUMENT_CHARS)
+  content: string;
+}
 
 class ChatStreamDto {
   @IsString()
   @MinLength(1)
   @MaxLength(2000)
   message: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ChatDocumentDto)
+  document?: ChatDocumentDto;
 }
 
 class CreateConversationDto {
@@ -81,10 +107,16 @@ export class ChatController {
     req.on('close', () => res.end());
 
     try {
-      const result = await this.chat.streamMessage(userId, id, dto.message, {
-        onDelta: (text) => send('delta', { text }),
-        onAction: (action) => send('action', { action }),
-      });
+      const result = await this.chat.streamMessage(
+        userId,
+        id,
+        dto.message,
+        {
+          onDelta: (text) => send('delta', { text }),
+          onAction: (action) => send('action', { action }),
+        },
+        dto.document,
+      );
       send('done', result);
     } catch (err) {
       const status = (err as { getStatus?: () => number }).getStatus?.() ?? 500;

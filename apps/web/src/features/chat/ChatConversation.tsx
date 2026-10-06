@@ -5,18 +5,22 @@ import {
   ArrowRight,
   Check,
   Crown,
+  FileText,
   FolderPlus,
   ListPlus,
+  Paperclip,
   Send,
   Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
 import { chatApi, streamChatMessage } from './chat.api';
-import type { ChatActionDto, ChatMessageDto } from './chat.api';
+import type { ChatActionDto, ChatDocument, ChatMessageDto } from './chat.api';
 import { useAuthStore } from '../auth/auth.store';
 import { Card } from '../../shared/components/Card';
 import { Button } from '../../shared/components/Button';
+import { Modal } from '../../shared/components/Modal';
+import { Textarea } from '../../shared/components/Input';
 import { Badge } from '../../shared/components/Badge';
 import { LoadingBlock } from '../../shared/components/Spinner';
 import { cn } from '../../shared/lib/utils';
@@ -27,6 +31,10 @@ const SUGGESTIONS = [
   'Añade palabras de negocios a una sección',
   '¿Cómo se pronuncia "thorough"?',
 ];
+
+const MAX_DOCUMENT_CHARS = 60000;
+const DEFAULT_DOCUMENT_INSTRUCTION =
+  'Extrae el vocabulario más importante de este documento y propón una sección.';
 
 export function ChatConversation({
   conversationId,
@@ -51,6 +59,8 @@ export function ChatConversation({
     action: ChatActionDto | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDoc, setPendingDoc] = useState<ChatDocument | null>(null);
+  const [attachOpen, setAttachOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -72,30 +82,38 @@ export function ChatConversation({
   };
 
   const send = async () => {
+    if (streaming) return;
     const text = input.trim();
-    if (!text || streaming) return;
+    if (!text && !pendingDoc) return;
+    const doc = pendingDoc;
     setInput('');
+    setPendingDoc(null);
     setError(null);
     setStreaming({ text: '', action: null });
     try {
-      await streamChatMessage(conversationId, text, (event) => {
-        if (event.event === 'delta') {
-          setStreaming((prev) => ({
-            text: (prev?.text ?? '') + event.text,
-            action: prev?.action ?? null,
-          }));
-        } else if (event.event === 'action') {
-          setStreaming((prev) => ({ text: prev?.text ?? '', action: event.action }));
-        } else if (event.event === 'done') {
-          void queryClient.invalidateQueries({
-            queryKey: ['chat', conversationId, 'messages'],
-          });
-          void queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
-          void queryClient.invalidateQueries({ queryKey: ['sections'] });
-        } else if (event.event === 'error') {
-          setError(event.message);
-        }
-      });
+      await streamChatMessage(
+        conversationId,
+        text || DEFAULT_DOCUMENT_INSTRUCTION,
+        (event) => {
+          if (event.event === 'delta') {
+            setStreaming((prev) => ({
+              text: (prev?.text ?? '') + event.text,
+              action: prev?.action ?? null,
+            }));
+          } else if (event.event === 'action') {
+            setStreaming((prev) => ({ text: prev?.text ?? '', action: event.action }));
+          } else if (event.event === 'done') {
+            void queryClient.invalidateQueries({
+              queryKey: ['chat', conversationId, 'messages'],
+            });
+            void queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+            void queryClient.invalidateQueries({ queryKey: ['sections'] });
+          } else if (event.event === 'error') {
+            setError(event.message);
+          }
+        },
+        doc ?? undefined,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
     } finally {
@@ -212,6 +230,27 @@ export function ChatConversation({
         <div ref={bottomRef} />
       </div>
 
+      {pendingDoc && (
+        <div className="mb-2 flex items-center gap-2 rounded-xl border border-violet-200 bg-violet-50/70 px-3 py-2">
+          <FileText className="size-4 shrink-0 text-violet-600" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-stone-800">
+              {pendingDoc.name ?? 'Texto pegado'}
+            </p>
+            <p className="text-[10px] text-stone-400">
+              {pendingDoc.content.length.toLocaleString('es-CL')} caracteres
+            </p>
+          </div>
+          <button
+            onClick={() => setPendingDoc(null)}
+            className="rounded-md p-1 text-stone-400 hover:bg-violet-100 hover:text-stone-700 cursor-pointer"
+            aria-label="Quitar documento"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -219,11 +258,24 @@ export function ChatConversation({
         }}
         className="mt-2 flex items-end gap-2 border-t border-stone-200/70 pt-3"
       >
+        <button
+          type="button"
+          onClick={() => setAttachOpen(true)}
+          className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white text-stone-500 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 cursor-pointer"
+          aria-label="Adjuntar documento"
+          title="Adjuntar documento (.txt o .md)"
+        >
+          <Paperclip className="size-4.5" />
+        </button>
         <div className="relative flex-1">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pide vocabulario o haz una pregunta…"
+            placeholder={
+              pendingDoc
+                ? 'Instrucción (opcional)…'
+                : 'Pide vocabulario o haz una pregunta…'
+            }
             className="h-11 w-full rounded-xl border border-stone-300 bg-white pl-4 pr-4 text-sm text-stone-900 placeholder:text-stone-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
             maxLength={2000}
             disabled={Boolean(streaming)}
@@ -234,7 +286,7 @@ export function ChatConversation({
           size="lg"
           variant="premium"
           className="h-11 w-11 px-0"
-          disabled={!input.trim() || Boolean(streaming)}
+          disabled={(!input.trim() && !pendingDoc) || Boolean(streaming)}
           aria-label="Enviar mensaje"
         >
           {streaming ? (
@@ -244,6 +296,149 @@ export function ChatConversation({
           )}
         </Button>
       </form>
+
+      <AttachDocumentModal
+        open={attachOpen}
+        onClose={() => setAttachOpen(false)}
+        onConfirm={(doc) => {
+          setPendingDoc(doc);
+          setAttachOpen(false);
+        }}
+      />
+    </div>
+  );
+}
+
+function AttachDocumentModal({
+  open,
+  onClose,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onConfirm: (doc: ChatDocument) => void;
+}) {
+  const [name, setName] = useState('');
+  const [text, setText] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = String(reader.result ?? '');
+      if (content.length > MAX_DOCUMENT_CHARS) {
+        setError(
+          `El documento supera el límite de ${MAX_DOCUMENT_CHARS.toLocaleString('es-CL')} caracteres (tiene ${content.length.toLocaleString('es-CL')}).`,
+        );
+        return;
+      }
+      setName(file.name);
+      setText(content);
+    };
+    reader.onerror = () => setError('No se pudo leer el archivo');
+    reader.readAsText(file);
+  };
+
+  const confirm = () => {
+    setError(null);
+    const content = text.trim();
+    if (!content) {
+      setError('Pega un texto o selecciona un archivo');
+      return;
+    }
+    if (content.length > MAX_DOCUMENT_CHARS) {
+      setError(
+        `El documento supera el límite de ${MAX_DOCUMENT_CHARS.toLocaleString('es-CL')} caracteres.`,
+      );
+      return;
+    }
+    onConfirm({ name: name.trim() || undefined, content });
+    setName('');
+    setText('');
+  };
+
+  return (
+    <Modal open={open} onClose={onClose} title="Adjuntar documento" wide>
+      <div className="space-y-4">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Nombre del documento (opcional)"
+          maxLength={200}
+          className="h-10 w-full rounded-xl border border-stone-300 bg-white px-3.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+        />
+
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-stone-500">
+            Sube un archivo <span className="font-medium">.txt</span> o{' '}
+            <span className="font-medium">.md</span>, o pega el texto abajo.
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.md,text/plain,text/markdown"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0])}
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <FileText className="size-4" /> Elegir archivo
+          </Button>
+        </div>
+
+        <Textarea
+          rows={12}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={'Eli: Hey, is this seat taken?\nEmma: No, go ahead.\n…'}
+          hint={`${text.length.toLocaleString('es-CL')} / ${MAX_DOCUMENT_CHARS.toLocaleString('es-CL')} caracteres`}
+        />
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={confirm} disabled={!text.trim()}>
+            <Paperclip className="size-4" /> Adjuntar
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+const PREVIEW_CHARS = 240;
+
+function UserBubble({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = content.length > PREVIEW_CHARS;
+
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[80%] rounded-2xl rounded-br-md bg-amber-600 px-4 py-2.5 text-sm text-white shadow-sm shadow-amber-600/20">
+        <p className="whitespace-pre-wrap break-words">
+          {isLong && !expanded
+            ? content.slice(0, PREVIEW_CHARS).replace(/\s+\S*$/, '') + '…'
+            : content}
+        </p>
+        {isLong && (
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="mt-1 text-xs font-medium text-amber-100/90 underline underline-offset-2 hover:text-white cursor-pointer"
+          >
+            {expanded ? 'Ver menos' : 'Ver documento completo'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -256,13 +451,7 @@ function MessageBubble({
   streaming?: boolean;
 }) {
   if (message.role === 'user') {
-    return (
-      <div className="flex justify-end">
-        <div className="max-w-[80%] rounded-2xl rounded-br-md bg-amber-600 px-4 py-2.5 text-sm text-white shadow-sm shadow-amber-600/20">
-          {message.content}
-        </div>
-      </div>
-    );
+    return <UserBubble content={message.content} />;
   }
 
   const isPending = message.action && message.status === 'pending';

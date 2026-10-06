@@ -52,10 +52,16 @@ export const chatApi = {
     api<{ ok: boolean }>(`/chat/messages/${messageId}/dismiss`, { method: 'POST' }),
 };
 
+export interface ChatDocument {
+  name?: string;
+  content: string;
+}
+
 export async function streamChatMessage(
   conversationId: string,
   message: string,
   onEvent: (event: ChatStreamEvent) => void,
+  document?: ChatDocument,
 ): Promise<void> {
   const { accessToken } = useAuthStore.getState();
   const base = (import.meta.env.VITE_API_URL ?? '') + '/api';
@@ -67,7 +73,7 @@ export async function streamChatMessage(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...(document ? { document } : {}) }),
   });
 
   if (!response.ok) {
