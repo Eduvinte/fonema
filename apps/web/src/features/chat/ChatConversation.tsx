@@ -8,6 +8,7 @@ import {
   FileText,
   FolderPlus,
   ListPlus,
+  Loader2,
   Paperclip,
   Send,
   Sparkles,
@@ -520,47 +521,63 @@ function ActionCard({ message }: { message: ChatMessageDto }) {
       ? `Crear sección “${action.name}”`
       : `Añadir palabras a ${action.sectionName ?? 'tu sección'}`;
 
-  const preview =
-    action.preview.join(', ') +
-    (action.wordCount > action.preview.length
-      ? ` +${action.wordCount - action.preview.length} más`
-      : '');
+  const hiddenCount = Math.max(0, action.wordCount - action.preview.length);
 
   return (
-    <Card className="border-violet-200 bg-violet-50/60 p-4">
+    <Card className="overflow-hidden border-violet-200 bg-gradient-to-br from-violet-50/90 via-white to-white p-4">
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-violet-600 text-white shadow-sm shadow-amber-600/20">
           {action.type === 'create_section' ? (
-            <FolderPlus className="size-4" />
+            <FolderPlus className="size-4.5" />
           ) : (
-            <ListPlus className="size-4" />
+            <ListPlus className="size-4.5" />
           )}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-stone-900">{title}</p>
           <p className="mt-0.5 text-xs text-stone-500">
-            {action.wordCount} {action.wordCount === 1 ? 'palabra' : 'palabras'} ·{' '}
-            {preview}
+            {action.wordCount} {action.wordCount === 1 ? 'palabra' : 'palabras'}{' '}
+            con traducción y frase de ejemplo
           </p>
-          <div className="mt-3 flex items-center gap-2">
-            <Button
-              variant="premium"
-              size="sm"
+
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {action.preview.map((word) => (
+              <span
+                key={word}
+                className="rounded-lg border border-violet-100 bg-white px-2 py-1 text-[11px] font-medium text-stone-600 shadow-xs"
+              >
+                {word}
+              </span>
+            ))}
+            {hiddenCount > 0 && (
+              <span className="rounded-lg bg-violet-50 px-2 py-1 text-[11px] font-medium text-violet-700">
+                +{hiddenCount} más
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3.5 flex items-center gap-2">
+            <button
               onClick={() => execute.mutate()}
-              loading={execute.isPending}
-            >
-              <Check className="size-4" />
-              {action.type === 'create_section' ? 'Crear sección' : 'Añadir'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => dismiss.mutate()}
-              loading={dismiss.isPending}
               disabled={execute.isPending}
+              className="group inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-violet-600 px-5 text-sm font-semibold text-white shadow-md shadow-amber-600/30 transition-all duration-150 hover:shadow-lg hover:shadow-violet-600/30 hover:brightness-110 active:scale-[0.97] disabled:opacity-60 cursor-pointer"
+            >
+              {execute.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FolderPlus className="size-4 transition-transform duration-150 group-hover:-rotate-6 group-hover:scale-110" />
+              )}
+              {action.type === 'create_section'
+                ? 'Crear sección'
+                : 'Añadir palabras'}
+            </button>
+            <button
+              onClick={() => dismiss.mutate()}
+              disabled={execute.isPending}
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800 disabled:opacity-50 cursor-pointer"
             >
               <X className="size-4" /> Descartar
-            </Button>
+            </button>
           </div>
           {execute.isError && (
             <p className="mt-2 text-xs text-red-600">
