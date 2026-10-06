@@ -152,7 +152,7 @@ export function ChatConversation({
   }
 
   return (
-    <div className={cn('flex flex-col', variant === 'page' && 'h-full')}>
+    <div className={cn('flex flex-col', variant === 'page' ? 'h-full' : 'min-h-0 flex-1')}>
       {variant === 'page' && (
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -176,7 +176,7 @@ export function ChatConversation({
         </div>
       )}
 
-      <div className="flex-1 space-y-4 overflow-y-auto pb-4 pr-1">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-4 pr-1">
         {isLoading && <LoadingBlock>Cargando conversación…</LoadingBlock>}
 
         {!isLoading && history && history.length === 0 && !streaming && (
