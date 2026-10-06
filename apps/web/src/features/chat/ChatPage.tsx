@@ -96,7 +96,7 @@ export function ChatPage() {
   const list = conversations ?? [];
 
   return (
-    <div className="flex h-[calc(100dvh-8rem)] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+    <div className="flex h-[calc(100dvh-8.5rem)] overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm md:h-[calc(100dvh-7.5rem)]">
       <aside
         className={cn(
           'w-full shrink-0 flex-col border-r border-stone-200 bg-stone-100/70 p-3 md:flex md:w-64',

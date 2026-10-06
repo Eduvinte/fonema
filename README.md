@@ -16,6 +16,7 @@ traducción y una frase de ejemplo. Escucha cada palabra y frase con un clic.
 | Backend | NestJS + Prisma + PostgreSQL | Railway |
 | Pagos | Flow.cl (suscripciones + Cargo Automático) | — |
 | IA / TTS | OpenAI (gpt-4o-mini, tts-1) | — |
+| PWA | vite-plugin-pwa (manifest, service worker, instalable) | — |
 
 Monorepo pnpm con **screaming architecture**: carpetas por dominio en ambos lados.
 

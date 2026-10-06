@@ -88,25 +88,25 @@ export function AppLayout() {
             </button>
           </div>
         </div>
-        <nav className="flex items-center gap-1 border-t border-stone-200/60 px-4 py-1.5 sm:hidden">
-          <NavItem to="/app" end>
+        <nav className="flex items-center gap-0.5 overflow-x-auto border-t border-stone-200/60 px-2 py-1.5 sm:hidden">
+          <NavItem to="/app" end compact>
             <FolderOpen className="size-4" /> Secciones
           </NavItem>
-          <NavItem to="/app/chat">
+          <NavItem to="/app/chat" compact>
             <Sparkles className="size-4" /> Asistente
           </NavItem>
-          <NavItem to="/app/billing">
+          <NavItem to="/app/billing" compact>
             <Crown className="size-4" /> Plan
           </NavItem>
           {user?.role === 'ADMIN' && (
-            <NavItem to="/app/admin">
+            <NavItem to="/app/admin" compact>
               <Shield className="size-4" /> Admin
             </NavItem>
           )}
         </nav>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main className="mx-auto max-w-5xl px-4 py-8 pb-28 sm:pb-8">
         <Outlet />
       </main>
 
@@ -242,10 +242,12 @@ function ChatWidget() {
 function NavItem({
   to,
   end,
+  compact,
   children,
 }: {
   to: string;
   end?: boolean;
+  compact?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -254,7 +256,10 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors',
+          'inline-flex shrink-0 items-center gap-1.5 rounded-lg font-medium transition-colors',
+          compact
+            ? 'px-2.5 py-1.5 text-xs'
+            : 'px-3 py-1.5 text-sm',
           isActive
             ? 'bg-white text-stone-900 shadow-sm border border-stone-200/70'
             : 'text-stone-500 hover:bg-white/60 hover:text-stone-800',

@@ -234,7 +234,7 @@ function UsersTable() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar email o nombre…"
-            className="h-9 w-44 rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 sm:w-56"
+            className="h-9 w-40 rounded-lg border border-stone-300 bg-white px-3 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 sm:w-56"
           />
         </form>
       </div>
