@@ -9,6 +9,7 @@ import {
   WandSparkles,
 } from 'lucide-react';
 import { useAuthStore } from '../features/auth/auth.store';
+import { InstallAppBanner } from '../features/pwa/InstallAppBanner';
 import { Logo } from '../shared/components/Logo';
 import { Button } from '../shared/components/Button';
 import { PlayButton } from '../features/audio/PlayButton';
@@ -33,6 +34,7 @@ export function LandingPage() {
 
   return (
     <div className="min-h-dvh">
+      <InstallAppBanner />
       <header className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Logo />
         <nav className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import { Crown, FolderOpen, LogOut, MessageSquareText, Shield, Sparkles, X } fro
 import { useAuthStore } from '../features/auth/auth.store';
 import { chatApi } from '../features/chat/chat.api';
 import { ChatConversation } from '../features/chat/ChatConversation';
+import { InstallAppBanner } from '../features/pwa/InstallAppBanner';
 import { Logo } from '../shared/components/Logo';
 import { Button } from '../shared/components/Button';
 import { Badge } from '../shared/components/Badge';
@@ -120,6 +121,8 @@ export function AppLayout() {
           <Sparkles className="size-6" />
         </button>
       )}
+
+      <InstallAppBanner />
 
       {chatOpen && (
         <div className="fixed inset-0 z-50">
