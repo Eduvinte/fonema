@@ -50,32 +50,27 @@ export function InstallAppBanner() {
   };
 
   return (
-    <div className="fixed bottom-5 left-4 z-40 flex max-w-[calc(100vw-8rem)] items-center gap-3 rounded-2xl border border-stone-200 bg-white/95 px-4 py-3 shadow-lg shadow-stone-900/10 backdrop-blur">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-violet-600 text-white">
-        {deferred ? <Download className="size-4.5" /> : <Share className="size-4.5" />}
+    <div className="fixed bottom-5 left-4 z-40 flex items-center gap-2.5 rounded-full border border-stone-200/70 bg-white/95 py-1.5 pl-2.5 pr-1.5 shadow-lg shadow-stone-900/10 backdrop-blur">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-violet-600 text-white shadow-sm shadow-amber-600/30">
+        {deferred ? <Download className="size-4" /> : <Share className="size-4" />}
       </span>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-stone-900">Instala Fonema</p>
-        <p className="text-xs text-stone-500">
-          {deferred
-            ? 'Úsala como una app, con acceso directo.'
-            : 'En iPhone: Compartir → Añadir a pantalla de inicio.'}
-        </p>
-      </div>
+      <p className="text-sm font-semibold tracking-tight text-stone-900">
+        {deferred ? 'Instalar Fonema' : 'Añadir a pantalla de inicio'}
+      </p>
       {deferred && (
         <button
           onClick={() => void install()}
-          className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 cursor-pointer"
+          className="shrink-0 rounded-full bg-gradient-to-r from-amber-500 to-violet-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-amber-600/25 transition-all hover:brightness-110 active:scale-95 cursor-pointer"
         >
           Instalar
         </button>
       )}
       <button
         onClick={dismiss}
-        className="shrink-0 rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
+        className="shrink-0 rounded-full p-1.5 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-700 cursor-pointer"
         aria-label="Cerrar"
       >
-        <X className="size-4" />
+        <X className="size-3.5" />
       </button>
     </div>
   );
