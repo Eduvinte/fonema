@@ -37,8 +37,22 @@ model User {
   chatMessages  ChatMessage[]
   conversations ChatConversation[]
   events        AnalyticsEvent[]
+  passwordResets PasswordReset[]
 
   @@map("users")
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  @@index([userId])
+  @@map("password_resets")
 }
 
 model AnalyticsEvent {

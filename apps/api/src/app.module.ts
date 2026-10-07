@@ -11,12 +11,14 @@ import { BillingModule } from './billing/billing.module';
 import { ChatModule } from './chat/chat.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { AdminModule } from './admin/admin.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
     AppConfigModule,
     PrismaModule,
     AnalyticsModule,
+    MailModule,
     AuthModule,
     SectionsModule,
     WordsModule,

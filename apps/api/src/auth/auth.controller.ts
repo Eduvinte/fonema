@@ -18,6 +18,8 @@ import type { JwtUser } from '../common/interfaces/jwt-user.interface';
 import { AuthService, REFRESH_COOKIE } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 
 @Controller('auth')
@@ -83,6 +85,20 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: JwtUser) {
     return this.auth.me(user.id);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto.token, dto.password);
   }
 
   private setRefreshCookie(res: Response, token: string) {

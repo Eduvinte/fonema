@@ -182,4 +182,22 @@ describe('API (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(403);
   });
+
+  it('recuperación de contraseña: forgot devuelve 200 y reset inválido 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/auth/forgot-password')
+      .send({ email: 'e2e@test.com' })
+      .expect(200)
+      .expect((res) => expect(body<{ ok: boolean }>(res).ok).toBe(true));
+
+    await request(app.getHttpServer())
+      .post('/api/auth/forgot-password')
+      .send({ email: 'no-existe@test.com' })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post('/api/auth/reset-password')
+      .send({ token: 'token-invalido', password: 'nueva-clave-123' })
+      .expect(400);
+  });
 });

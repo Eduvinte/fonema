@@ -27,6 +27,10 @@ const envSchema = z.object({
   OPENAI_TTS_VOICE: z.string().default('nova'),
   FREE_MONTHLY_AI_LIMIT: z.coerce.number().default(50),
   AUDIO_CACHE_TTL_DAYS: z.coerce.number().default(90),
+
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM: z.string().default('Talk Eli <onboarding@resend.dev>'),
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 
 export type Env = z.infer<typeof envSchema>;

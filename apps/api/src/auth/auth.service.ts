@@ -7,6 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { MailService } from '../mail/mail.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { TokenPayload } from '../common/interfaces/jwt-user.interface';
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly analytics: AnalyticsService,
+    private readonly mail: MailService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -103,6 +105,67 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException();
     return this.toSafeUser(user);
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const tokenHash = this.hashToken(rawToken);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      await this.prisma.passwordReset.deleteMany({
+        where: { userId: user.id, usedAt: null },
+      });
+      await this.prisma.passwordReset.create({
+        data: { userId: user.id, tokenHash, expiresAt },
+      });
+
+      const frontendUrl = this.config.get<string>('FRONTEND_URL');
+      const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+      await this.mail.sendResetPassword(user.email, resetUrl);
+    }
+
+    return {
+      ok: true,
+      message:
+        'Si existe una cuenta con ese email, recibirás un enlace de recuperación.',
+    };
+  }
+
+  async resetPassword(token: string, password: string) {
+    const tokenHash = this.hashToken(token);
+    const reset = await this.prisma.passwordReset.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!reset || reset.usedAt || reset.expiresAt < new Date()) {
+      throw new BadRequestException(
+        'El enlace de recuperación es inválido o ha expirado',
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: reset.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordReset.update({
+        where: { id: reset.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: reset.userId },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    return { ok: true };
   }
 
   private async issueTokens(userId: string, email: string) {
