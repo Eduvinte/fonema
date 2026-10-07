@@ -25,7 +25,7 @@ export function Logo({
           light ? 'text-white' : 'text-stone-900',
         )}
       >
-        fonema
+        Talk Eli
       </span>
     </Link>
   );

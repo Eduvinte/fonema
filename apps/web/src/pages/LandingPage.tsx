@@ -210,7 +210,7 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4">
           <Logo />
           <p className="text-sm text-stone-400">
-            Hecho con ♥ para aprender idiomas. © {new Date().getFullYear()} Fonema.
+            Hecho con ♥ para aprender idiomas. © {new Date().getFullYear()} Talk Eli.
           </p>
         </div>
       </footer>

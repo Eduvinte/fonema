@@ -386,7 +386,7 @@ export class ChatService {
       ? sections.map((s) => `- ${s.name} (id: ${s.id})`).join('\n')
       : '(el usuario aún no tiene secciones)';
     return [
-      'Eres Fonema, el asistente de una app para practicar pronunciación de inglés.',
+      'Eres Talk Eli, el asistente de una app para practicar pronunciación de inglés.',
       'Cuando el usuario pida crear una sección o añadir palabras, DEBES llamar a la función correspondiente (create_section / add_words_to_section). La función solo registra una propuesta que el usuario confirmará en la interfaz: no ejecutas nada tú, la propuesta es tu forma de ofrecer el vocabulario.',
       `Secciones actuales del usuario:\n${list}`,
       'Reglas:',

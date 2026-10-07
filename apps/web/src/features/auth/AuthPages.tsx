@@ -168,7 +168,7 @@ function AuthShell({
           <AudioLines className="size-5" />
         </span>
         <span className="font-display text-2xl italic tracking-tight text-stone-900">
-          fonema
+          Talk Eli
         </span>
       </Link>
       <Card className="w-full max-w-md p-7">

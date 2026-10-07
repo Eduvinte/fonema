@@ -55,7 +55,7 @@ export function InstallAppBanner() {
         {deferred ? <Download className="size-4" /> : <Share className="size-4" />}
       </span>
       <p className="text-sm font-semibold tracking-tight text-stone-900">
-        {deferred ? 'Instalar Fonema' : 'Añadir a pantalla de inicio'}
+        {deferred ? 'Instalar Talk Eli' : 'Añadir a pantalla de inicio'}
       </p>
       {deferred && (
         <button

@@ -1,4 +1,4 @@
-# Fonema — App de pronunciación en inglés con IA
+# Talk Eli — App de pronunciación en inglés con IA
 
 Crea secciones de vocabulario, pega listas de palabras y deja que la IA genere la
 traducción y una frase de ejemplo. Escucha cada palabra y frase con un clic.

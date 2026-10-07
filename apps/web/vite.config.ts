@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png'],
       manifest: {
-        name: 'Fonema — Pronunciación en inglés',
-        short_name: 'Fonema',
+        name: 'Talk Eli — Pronunciación en inglés',
+        short_name: 'Talk Eli',
         description:
           'Mejora tu pronunciación en inglés con vocabulario generado por IA.',
         theme_color: '#091d4b',
